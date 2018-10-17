@@ -41,10 +41,7 @@ public class OrderProcessor {
         val orders = fetchOrdersFrom(storeId)
                 .map(functions.removeDuplicate)
                 .transform(functions.toTrySequence);
-        val stats = orders.stream()
-                .map(functions.saveAndThenInsertAndThenLogAnOrder)
-                .collect(Stats::new, Stats::add, Stats::combine);
-        log.info(stats.toString());
+
     }
 
     private Try<List<Order>> fetchOrdersFrom(StoreId storeId) {
@@ -71,26 +68,7 @@ public class OrderProcessor {
                 Case($Failure($()), error ->
                         Collections.singletonList(Try.failure(error))
                 ));
-
-        private Function1<Try<Order>, Try<Order>> saveOrderToFileSystem =
-                order -> order.andThen(ordersFileWriter::writeToFile);
-
-        private Function1<Try<Order>, Try<Order>> insertOrderIntoDatabase =
-                order -> order.andThen(ordersRepository::save);
-
-        private Function1<Try<Order>, Try<Order>> writeMessageToLog = order -> Match(order).of(
-                Case($Success($()), value -> {
-                    log.info(String.format("Order created: %s", value));
-                    return order;
-                }),
-                Case($Failure($()), error -> {
-                    log.error("Failed to create order", error);
-                    return order;
-                }));
-
-        private Function1<Try<Order>, Try<Order>> saveAndThenInsertAndThenLogAnOrder = saveOrderToFileSystem
-                .andThen(insertOrderIntoDatabase)
-                .andThen(writeMessageToLog);
+        
 
     }
 
